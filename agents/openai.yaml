@@ -1,0 +1,4 @@
+interface:
+  display_name: "claude-like-codex-code-review"
+  short_description: "以分级模型执行五路独立代码评审，逐项复核并过滤低置信问题"
+  default_prompt: "使用 $claude-like-codex-code-review 评审当前代码，明确评审范围，执行五路独立检查并只报告置信度至少 80 的问题。"
