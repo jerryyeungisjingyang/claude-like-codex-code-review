@@ -1,0 +1,21 @@
+README.md
+  s_1f5572987f6899::t_70d78ec61949ba 19,71,132-138,218,270,332,334-338
+SKILL.md
+  s_1f5572987f6899::t_bd56272fec279f 32,106,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "305117c0085e004a7a375958659a8213264f8e53",
+  "prompts": {},
+  "sessions": {
+    "s_1f5572987f6899": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a071fe-3ae4-75d3-8140-65c70d62009b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "jerrick_yang <jerrick@ave.ai>"
+    }
+  }
+}
