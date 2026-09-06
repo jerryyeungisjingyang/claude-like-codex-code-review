@@ -1,6 +1,6 @@
 # claude-like-codex-code-review
 
-**Bring Claude code-review's five independent review tracks to Codex.**
+**Independent code review in Codex with two rule reviewers and two bug reviewers.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Agent Skill](https://img.shields.io/badge/Codex-Agent_Skill-111827)](SKILL.md)
@@ -13,7 +13,7 @@ Claude Code's `code-review` plugin is great. Independent agents inspect the code
 
 So I built a Codex version.
 
-One command starts five independent review tracks, follows code and history, checks project rules, and brings evidence-backed findings back to your chat. Review PRs, branch changes, or entire modules with Luna / Terra / Sol handling different parts of the work.
+One command starts four independent review tracks, follows code and history, checks project rules, and brings evidence-backed findings back to your chat. Review PRs, branch changes, or entire modules with Luna / Sol handling different parts of the work.
 
 ```text
 /claude-like-codex-code-review Review the entire example service against docs/requirements/. No comparison branch.
@@ -27,7 +27,7 @@ A useful code review should answer three questions: **What breaks? What triggers
 
 This skill puts those questions into the workflow:
 
-- **Five perspectives, independent discovery.** Check project rules, obvious bugs, historical changes, prior PR comments, and code comments separately.
+- **Four independent reviewers.** Two Sol low agents check project rules; two Sol high agents look for bugs.
 - **Find an issue, then look for counterevidence.** Fresh agents verify candidates against existing safeguards and trigger conditions.
 - **Report findings that meet the threshold.** Merge duplicate root causes and keep findings scoring at least 80, with locations, triggers, and impact.
 - **Review a diff or an entire module.** Full reviews include existing defects. Specify a TRD to check implementation against business requirements.
@@ -47,7 +47,7 @@ cp -R agents "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/"
 
 These commands install the skill into your user-level skills directory and update an existing copy with the same name. Start a new Codex session and confirm that `claude-like-codex-code-review` appears in the skill list.
 
-The full workflow requires a Codex environment with subagent orchestration and model selection. The current configuration targets environments offering `gpt-5.6-luna`, `gpt-5.6-terra`, and `gpt-5.6-sol`; fallback behavior is described below.
+The full workflow requires a Codex environment with subagent orchestration and model selection. The current configuration targets environments offering `gpt-5.6-luna` and `gpt-5.6-sol`; fallback behavior is described below.
 
 ### 2. Run a review
 
@@ -100,8 +100,8 @@ Confirm scope and code version
               ↓
 Collect rules and summarize the module
               ↓
-Five independent review tracks
-Rules · Bugs · History · PR feedback · Comments
+Four independent review tracks
+Rules × 2 (Sol low) · Bugs × 2 (Sol high)
               ↓
 Merge duplicate root causes
               ↓
@@ -114,13 +114,12 @@ Recheck the code version and return findings in chat
 
 | Review track | Key question |
 | --- | --- |
-| Project rules | Does the implementation violate applicable `AGENTS.md`, `CLAUDE.md`, or user-specified TRDs? |
-| Obvious bugs | Is there a functional error with a concrete trigger and impact? |
-| Historical causality | Did a later commit undo a safeguard? Was a migration missed? |
-| Historical PR comments | Do previously reported issues still exist or recur? |
-| Comments versus implementation | Do locks, states, idempotency, and recovery behave as their comments describe? |
+| Project rules × 2 | Each independently checks applicable `AGENTS.md`, `CLAUDE.md`, and user-specified TRDs. |
+| Bugs × 2 | Each independently checks functional errors and their concrete triggers, impact, and safeguards. |
 
-The five tracks use independent contexts and run in batches within the environment's concurrency limit. Discovery agents do not receive other reviewers' conclusions. Verification agents read the code themselves to determine whether each candidate holds up.
+History, prior PR discussions, and code comments remain available as supporting evidence when relevant; they are not separate mandatory tracks.
+
+The four tracks use independent contexts and run in batches within the environment's concurrency limit. Discovery agents do not receive other reviewers' conclusions. Each merged candidate is scored once by a fresh Luna medium agent that reads the code and seeks counterevidence. There is no additional Sol recheck.
 
 **80 is a review threshold, not an “80% probability of being correct.”** Scores describe the strength of evidence; severity is assessed separately. If no finding meets the threshold, the review still reports its outcome and coverage limitations.
 
@@ -146,17 +145,16 @@ Each finding includes a file link, trigger, practical impact, and key evidence. 
 
 | Work | Default model | Reasoning effort |
 | --- | --- | --- |
-| Scope, rule paths, summary, final baseline check | GPT-5.6 Luna | low |
-| Rules, obvious bugs, historical PR comments, and code comments | GPT-5.6 Terra | medium |
-| Historical causality | GPT-5.6 Sol | medium |
+| Scope, rule paths, summary, final baseline check | GPT-5.6 Luna | medium |
+| Two independent rule reviews | GPT-5.6 Sol | low |
+| Two independent bug reviews | GPT-5.6 Sol | high |
 | Independent candidate scoring | GPT-5.6 Luna | medium |
-| Necessary rechecks for conflicting evidence or complex findings | GPT-5.6 Sol | medium |
 
-The coordinator keeps your current session model. If you use Astra, Astra still orchestrates the review and summarizes the results; subagents use the models above. Switch the session model before invoking the skill if you want Sol or Terra to coordinate as well.
+The coordinator keeps your current session model. If you use Astra, Astra still orchestrates the review and summarizes the results; subagents use the models above. Switch the session model before invoking the skill if you want Sol to coordinate as well.
 
 Multiple agents add code-reading, reasoning, and synthesis costs. Model tiers help manage the cost of different assignments; they do not promise a fixed saving or fewer total tokens than a single-agent review.
 
-Model IDs and dispatch rules live in [SKILL.md](SKILL.md). If a specified model is unavailable, the workflow first tries an available Luna / Terra / Sol alternative. If none is available, or agent tools are missing, it discloses the limitation and falls back to sequential review by the current model. It does not label that fallback as five independent reviews.
+Model IDs and dispatch rules live in [SKILL.md](SKILL.md). If a specified model is unavailable, the workflow first tries an available Luna / Sol alternative. If none is available, or agent tools are missing, it discloses the limitation and falls back to sequential review by the current model. It does not label that fallback as four independent reviews.
 
 ## FAQ
 
@@ -174,7 +172,7 @@ No. Models, scope, and available evidence affect the outcome. Independent verifi
 
 ### Do I need a PR?
 
-No. Review workspace changes, branch differences, or an entire specified module. If historical PR data is unavailable, that track is marked as uncovered.
+No. Review workspace changes, branch differences, or an entire specified module. If needed historical PR evidence is unavailable, the review reports that limitation.
 
 ### Is this an official Claude or OpenAI project?
 
@@ -206,13 +204,13 @@ Thanks to [Claude Code's code-review plugin](https://github.com/anthropics/claud
 
 [English](#english) | [简体中文](#简体中文)
 
-**把 Claude code-review 的五路独立评审流程，带到 Codex。**
+**在 Codex 中执行两路规则检查、两路 bug 检查，再逐项独立评分。**
 
 Claude Code 的 `code-review` 插件很好用。多个代理分别检查代码，再逐项核实候选问题、过滤误报，这套流程值得在 Codex 里也用起来。
 
 所以，我做了一个 Codex 版本。
 
-一个命令，启动五路独立评审，追踪代码与历史，核对项目规范，最后把有证据的问题带回聊天。支持 PR、分支改动和指定模块全量审查，使用 Luna / Terra / Sol 分工。
+一个命令，启动四路独立评审，追踪代码与历史，核对项目规范，最后把有证据的问题带回聊天。支持 PR、分支改动和指定模块全量审查，使用 Luna / Sol 分工。
 
 ```text
 /claude-like-codex-code-review 对照 docs/requirements/，审查整个示例服务，没有对比分支。
@@ -226,7 +224,7 @@ Claude Code 的 `code-review` 插件很好用。多个代理分别检查代码�
 
 这个 skill 把这些要求放进执行流程：
 
-- **五个角度，独立发现。** 分别检查规范、明显 bug、历史变更、历史 PR 评论和代码注释。
+- **四路独立发现。** 两路 Sol low 检查规则，两路 Sol high 查找 bug。
 - **发现之后，再找反证。** 候选问题交给新的代理复核，检查已有保护措施和触发前提。
 - **只报告达到阈值的问题。** 合并重复根因，保留置信评分至少 80 的发现，附上位置、触发条件和影响。
 - **能审改动，也能审整个模块。** 全量模式会检查已有缺陷；明确指定 TRD 时，对照业务约束审查实现。
@@ -246,7 +244,7 @@ cp -R agents "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/"
 
 以上命令会安装到用户级 skills 目录；已有同名版本时会更新它。重新开启 Codex 会话，在技能列表中确认 `claude-like-codex-code-review` 已被发现。
 
-完整流程需要支持子代理调度及模型选择的 Codex 环境。当前模型配置面向提供 `gpt-5.6-luna`、`gpt-5.6-terra`、`gpt-5.6-sol` 的环境；其他环境的降级方式见下文。
+完整流程需要支持子代理调度及模型选择的 Codex 环境。当前模型配置面向提供 `gpt-5.6-luna`、`gpt-5.6-sol` 的环境；其他环境的降级方式见下文。
 
 ### 2. 开始评审
 
@@ -299,9 +297,7 @@ PR 数据通过环境中已有的 GitHub 连接器或 `gh` 读取。缺少权限
         ↓
 收集规范 · 整理模块摘要
         ↓
-┌────────┬────────┬────────┬────────┬────────┐
-│ 项目规范 │ 明显 bug │ 历史因果 │ PR 评论 │ 注释实现 │
-└────────┴────────┴────────┴────────┴────────┘
+两路规则检查（Sol low）· 两路 bug 检查（Sol high）
         ↓
 合并重复根因
         ↓
@@ -314,13 +310,12 @@ PR 数据通过环境中已有的 GitHub 连接器或 `gh` 读取。缺少权限
 
 | 评审角度 | 关注的问题 |
 | --- | --- |
-| 项目规范 | 实现是否违反适用的 `AGENTS.md`、`CLAUDE.md`，以及用户指定的 TRD？ |
-| 明显 bug | 是否存在能明确说明触发条件和影响的功能错误？ |
-| 历史因果 | 过去的修复是否被后续提交撤回？迁移是否遗漏？ |
-| 历史 PR 评论 | 以前指出的问题是否仍然存在或再次出现？ |
-| 注释与实现 | 锁、状态、幂等和恢复逻辑，是否与代码注释描述一致？ |
+| 项目规范 × 2 | 各自独立检查适用的 `AGENTS.md`、`CLAUDE.md`，以及用户指定的 TRD。 |
+| bug 检查 × 2 | 各自独立查找功能错误，核实触发条件、影响与已有保护措施。 |
 
-五路使用独立上下文，按环境的并发上限分批执行。发现阶段不传递其他评审者的结论；复核阶段要求自行读取代码，检查候选是否成立。
+历史变更、历史 PR 评论和代码注释按需作为证据，不再单独设置必跑的评审路线。
+
+四路使用独立上下文，按环境的并发上限分批执行。发现阶段不传递其他评审者的结论；每个去重后的候选由独立的 Luna medium 代理读取代码、寻找反证并评分一次，不追加 Sol 二次复核。
 
 **80 分是评审阈值，不是“80% 的真实概率”。** 评分表示证据充分程度，严重程度单独判断。没有达到阈值的问题时，也会明确返回结果和覆盖限制。
 
@@ -346,17 +341,16 @@ PR 数据通过环境中已有的 GitHub 连接器或 `gh` 读取。缺少权限
 
 | 工作 | 默认模型 | 推理强度 |
 | --- | --- | --- |
-| 范围整理、规范路径收集、摘要、最终基线检查 | GPT-5.6 Luna | low |
-| 规范、明显 bug、历史 PR 评论、注释四路评审 | GPT-5.6 Terra | medium |
-| 历史因果评审 | GPT-5.6 Sol | medium |
+| 范围整理、规范路径收集、摘要、最终基线检查 | GPT-5.6 Luna | medium |
+| 两路独立规则检查 | GPT-5.6 Sol | low |
+| 两路独立 bug 检查 | GPT-5.6 Sol | high |
 | 候选问题独立评分 | GPT-5.6 Luna | medium |
-| 证据冲突或复杂问题的必要二次复核 | GPT-5.6 Sol | medium |
 
-主协调者保持当前会话模型。如果当前使用 Astra，任务调度和最终汇总仍由 Astra 完成，子代理按上表选择模型。希望协调部分也使用 Sol 或 Terra，可以在调用前切换会话模型。
+主协调者保持当前会话模型。如果当前使用 Astra，任务调度和最终汇总仍由 Astra 完成，子代理按上表选择模型。希望协调部分也使用 Sol，可以在调用前切换会话模型。
 
 多代理会产生额外的代码读取、推理和汇总消耗。分级模型用于控制分工成本，不承诺固定节省比例，也不代表总 token 数比单代理更少。
 
-模型 ID 和调度规则写在 [SKILL.md](SKILL.md) 中。指定模型不可用时，优先在可用的 Luna / Terra / Sol 中替代；全部不可用或缺少代理工具时，说明限制并降级为当前模型顺序检查，不将降级结果称为五路独立评审。
+模型 ID 和调度规则写在 [SKILL.md](SKILL.md) 中。指定模型不可用时，优先在可用的 Luna / Sol 中替代；全部不可用或缺少代理工具时，说明限制并降级为当前模型顺序检查，不将降级结果称为四路独立评审。
 
 ## 常见问题
 
@@ -374,7 +368,7 @@ PR 数据通过环境中已有的 GitHub 连接器或 `gh` 读取。缺少权限
 
 ### 必须有 PR 才能用吗？
 
-不需要。可以检查工作区改动、分支差异或指定模块的全量代码。没有历史 PR 数据时，对应维度会标记为未覆盖。
+不需要。可以检查工作区改动、分支差异或指定模块的全量代码。所需历史 PR 证据无法获取时，会说明覆盖限制。
 
 ### 这是 Claude 或 OpenAI 的官方项目吗？
 

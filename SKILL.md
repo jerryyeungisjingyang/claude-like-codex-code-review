@@ -1,11 +1,11 @@
 ---
 name: claude-like-codex-code-review
-description: Review PRs, branch changes, or entire specified modules with five independent review tracks and per-finding confidence scoring inspired by Claude code-review, using tiered GPT-5.6 Luna/Terra/Sol subagents. Use for explicit code reviews, history-based investigations, or reviews against project rules and technical requirements documents (TRDs).
+description: Review PRs, branch changes, or entire specified modules with four independent review tracks and per-finding confidence scoring inspired by Claude code-review, using tiered GPT-5.6 Luna/Sol subagents. Use for explicit code reviews, history-based investigations, or reviews against project rules and technical requirements documents (TRDs).
 ---
 
 # Claude-like Codex Code Review
 
-Follow this sequence: scope confirmation → rule collection → change summary → five independent reviews → per-candidate verification and scoring → threshold filtering → baseline recheck → output.
+Follow this sequence: scope confirmation → rule collection → change summary → four independent reviews → per-candidate verification and scoring → threshold filtering → baseline recheck → output.
 
 ## Default boundary: read-only review, results in chat
 
@@ -25,18 +25,17 @@ This skill explicitly requires delegation to independent subagents. Use the agen
 
 | Work | Model ID | Reasoning effort |
 | --- | --- | --- |
-| Eligibility, rule-path collection, scope summary, final baseline check | `gpt-5.6-luna` | low |
-| Project rules, obvious bugs, historical PR comments, and code comments: four review tracks | `gpt-5.6-terra` | medium |
-| Git blame and historical causality review | `gpt-5.6-sol` | medium |
+| Eligibility, rule-path collection, scope summary, final baseline check | `gpt-5.6-luna` | medium |
+| Two independent project-rule review tracks | `gpt-5.6-sol` | low |
+| Two independent bug review tracks | `gpt-5.6-sol` | high |
 | Independent confidence scoring for each candidate | `gpt-5.6-luna` | medium |
-| Second verification of conflicting evidence or complex data-integrity/concurrency candidates | `gpt-5.6-sol` | medium |
 
 - The coordinator keeps the current session model; this skill cannot switch the main session model. Explicitly select the models above for subagents. Do not use Astra for subagents or automatically upgrade to other high-cost models.
 - When using `collaboration.spawn_agent`, set `fork_turns: "none"`, explicitly specify `model` and `reasoning_effort`, and provide complete task materials. Do not pass coordinator guesses or other reviewers' conclusions to agents discovering findings. Report actual models from dispatch parameters, not subagents' self-identification.
-- Five tracks means five independent tasks, not five simultaneous executions. Respect the environment's concurrency limit and schedule in batches; wait for or reuse released slots when necessary.
-- Run lightweight preparation in dependency order; the same Luna agent may be reused. Give each of the five reviewers a fresh context, and use independent contexts for scoring too.
-- Score each candidate once by default. Allow one Sol recheck only for explicitly unresolved evidence conflicts; do not repeatedly sample to reach 80.
-- If a specified model or agent tool is unavailable, disclose the missing capability and choose an available Luna/Terra/Sol alternative. If none is available, fall back to sequential review by the current model and disclose the downgrade. Do not claim that independent multi-agent review was completed.
+- Four tracks means four independent tasks, not four simultaneous executions. Respect the environment's concurrency limit and schedule in batches; wait for or reuse released slots when necessary.
+- Run lightweight preparation in dependency order; the same Luna agent may be reused. Give each of the four reviewers a fresh context, and use independent contexts for scoring too.
+- Score each merged candidate once with Luna at medium reasoning effort. Do not add a Sol recheck or repeatedly sample to reach 80.
+- If a specified model or agent tool is unavailable, disclose the missing capability and choose an available Luna/Sol alternative. If none is available, fall back to sequential review by the current model and disclose the downgrade. Do not claim that independent multi-agent review was completed.
 
 ## 1. Determine scope and eligibility
 
@@ -58,19 +57,18 @@ The coordinator reads applicable files and gives reviewers precise paths to read
 
 ## 3. Summarize the changes or module
 
-Have Luna return a concise factual summary of entry points, main changes or module responsibilities, affected call chains, and data and state boundaries. Do not list suspected bugs in advance; preserve the independence of the five discovery tracks.
+Have Luna return a concise factual summary of entry points, main changes or module responsibilities, affected call chains, and data and state boundaries. Do not list suspected bugs in advance; preserve the independence of the four discovery tracks.
 
-## 4. Run five independent reviews
+## 4. Run four independent reviews
 
 Give each agent the repository path, fixed baseline, mode and directory scope, applicable rule paths, summary, and its own review assignment. Require read-only access to code and history, with results returned only through agent replies. Do not write files, run tests or builds, publish remote comments, or launch additional review agents. If the user explicitly authorized an additional action, pass only that action's specific scope.
 
 | Track | Assignment |
 | --- | --- |
-| A: Project rules | Review against AGENTS.md and CLAUDE.md. When the user specifies TRDs, check relevant business constraints individually and identify the exact violated clauses. Do not treat every coding recommendation as a defect. |
-| B: Obvious bugs | Prioritize definite, significant errors in the scoped code; avoid trivial style feedback. In incremental mode, read the diff first and follow necessary context only to verify concrete candidates. In full mode, read the specified module and necessary call chains. |
-| C: Historical causality | Read git blame, relevant commits, and historical implementations to find removed safeguards, missing migrations, and changes in state or interface semantics. Require a trigger in the current code; historical differences alone do not establish a defect. |
-| D: Historical PR comments | Use an already available GitHub connector or `gh` to inspect prior PRs and comments involving these files, checking whether previously raised issues still apply. Mark this track as uncovered if the remote, permissions, or history are unavailable. Do not request login, create a PR, or change remote configuration for this track. |
-| E: Comments versus implementation | Check whether comments about state, locks, idempotency, error recovery, and other constraints match the implementation. Distinguish outdated comments from behavioral defects; do not introduce a defect to satisfy an incorrect comment. If there are no relevant code comments, state that this dimension has nothing applicable to inspect; do not repeat track A's rules audit. |
+| A + B: Project rules (two independent Sol low agents) | Each agent reviews all applicable AGENTS.md and CLAUDE.md rules. When the user specifies TRDs, check relevant business constraints individually and identify the exact violated clauses. Do not treat every coding recommendation as a defect. Both agents receive the same scope and rules, with separate contexts and no shared conclusions. |
+| C + D: Bugs (two independent Sol high agents) | Each agent independently searches for definite, significant functional bugs, including logic, security, state, concurrency, and data-integrity errors. In incremental mode, read the diff first and follow necessary context to verify concrete candidates. In full mode, read the specified module and necessary call chains. Require a feasible trigger and observable impact; avoid trivial style feedback. |
+
+History, prior PR discussions, and code comments may support concrete candidates when relevant; they are not separate mandatory review tracks. Use an already available GitHub connector or `gh` for historical PR evidence. Do not request login or change remote configuration. Historical differences or outdated comments alone do not establish a behavioral defect.
 
 Each track returns candidates or no findings. Use these fields for candidates:
 
@@ -91,7 +89,7 @@ The coordinator merges duplicate candidates by root cause while preserving evide
 
 ## 5. Score each candidate independently
 
-Assign a fresh Luna scoring agent to each merged candidate. Provide the candidate, fixed code scope, and rule paths. Require independent context reading and an active search for safeguards that would invalidate the candidate. Do not score based solely on the wording of its description.
+Assign a fresh Luna scoring agent at medium reasoning effort to each merged candidate, including both rule violations and bugs. Provide the candidate, fixed code scope, and rule paths. Require independent context reading and an active search for safeguards that would invalidate the candidate. Do not score based solely on the wording of its description.
 
 All scoring agents use the same scale:
 
@@ -107,7 +105,7 @@ Intermediate scores such as 80, 85, and 90 are allowed with an explanation. Conf
 
 Return `candidate_id`, `score`, `verdict`, `evidence`, `remaining_assumptions`, and `priority`. For rule violations, confirm that the cited rule exists and applies.
 
-If the scoring agent cannot establish cross-function, transactional, concurrency, or data-integrity semantics, or if evidence from different tracks directly conflicts, allow one second verification by Sol. Ask Sol to adjudicate the specific evidence rather than averaging model scores.
+If the scoring agent cannot establish cross-function, transactional, concurrency, or data-integrity semantics, or cannot resolve conflicting evidence, record the remaining assumptions and score accordingly. Unresolved candidates that lack complete evidence must not pass the reporting threshold.
 
 ## 6. Filter false positives
 
