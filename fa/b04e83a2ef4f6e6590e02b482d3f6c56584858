@@ -1,0 +1,23 @@
+README.md
+  s_2a4a67bdd6f48f::t_e54de3e91170b7 3,16,30,50,103-104,117-118,120-122,148-150,153,157,175,207,213,227,247,300,313-316,318,344-346,349,353,371
+SKILL.md
+  s_2a4a67bdd6f48f::t_0fa8333e98010e 3,8,28-30,35-38,60,62,68-71,92,108
+agents/openai.yaml
+  s_2a4a67bdd6f48f::t_022b3662672279 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fab04e83a2ef4f6e6590e02b482d3f6c56584858",
+  "prompts": {},
+  "sessions": {
+    "s_2a4a67bdd6f48f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a074f6-ecc1-7a93-8b03-1c42adc319c8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "jerrick_yang <jerrick@ave.ai>"
+    }
+  }
+}
