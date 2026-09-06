@@ -29,7 +29,7 @@ This skill explicitly requires delegation to independent subagents. Use the agen
 | Project rules, obvious bugs, historical PR comments, and code comments: four review tracks | `gpt-5.6-terra` | medium |
 | Git blame and historical causality review | `gpt-5.6-sol` | medium |
 | Independent confidence scoring for each candidate | `gpt-5.6-luna` | medium |
-| Second verification of conflicting evidence or complex financial/concurrency candidates | `gpt-5.6-sol` | medium |
+| Second verification of conflicting evidence or complex data-integrity/concurrency candidates | `gpt-5.6-sol` | medium |
 
 - The coordinator keeps the current session model; this skill cannot switch the main session model. Explicitly select the models above for subagents. Do not use Astra for subagents or automatically upgrade to other high-cost models.
 - When using `collaboration.spawn_agent`, set `fork_turns: "none"`, explicitly specify `model` and `reasoning_effort`, and provide complete task materials. Do not pass coordinator guesses or other reviewers' conclusions to agents discovering findings. Report actual models from dispatch parameters, not subagents' self-identification.
@@ -103,11 +103,11 @@ All scoring agents use the same scale:
 | 75 | Likely valid and affects functionality, but important assumptions remain unconfirmed. |
 | 100 | Direct evidence confirms the trigger and incorrect outcome, and relevant counterevidence has been checked. |
 
-Intermediate scores such as 80, 85, and 90 are allowed with an explanation. Confidence is neither a statistical probability nor severity. Rare financial or data loss can still receive high confidence when supported by definite evidence.
+Intermediate scores such as 80, 85, and 90 are allowed with an explanation. Confidence is neither a statistical probability nor severity. Rare data loss can still receive high confidence when supported by definite evidence.
 
 Return `candidate_id`, `score`, `verdict`, `evidence`, `remaining_assumptions`, and `priority`. For rule violations, confirm that the cited rule exists and applies.
 
-If the scoring agent cannot establish cross-function, transactional, concurrency, or financial semantics, or if evidence from different tracks directly conflicts, allow one second verification by Sol. Ask Sol to adjudicate the specific evidence rather than averaging model scores.
+If the scoring agent cannot establish cross-function, transactional, concurrency, or data-integrity semantics, or if evidence from different tracks directly conflicts, allow one second verification by Sol. Ask Sol to adjudicate the specific evidence rather than averaging model scores.
 
 ## 6. Filter false positives
 

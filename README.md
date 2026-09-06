@@ -16,7 +16,7 @@ So I built a Codex version.
 One command starts five independent review tracks, follows code and history, checks project rules, and brings evidence-backed findings back to your chat. Review PRs, branch changes, or entire modules with Luna / Terra / Sol handling different parts of the work.
 
 ```text
-/claude-like-codex-code-review Review the entire payment service against docs/TRD/. No comparison branch.
+/claude-like-codex-code-review Review the entire example service against docs/requirements/. No comparison branch.
 ```
 
 [Quick start](#quick-start) · [How it works](#how-it-works) · [Models and usage](#models-and-usage) · [FAQ](#faq)
@@ -68,7 +68,7 @@ Open the repository you want to review in Codex and enter:
 **Review an entire service against its TRDs:**
 
 ```text
-/claude-like-codex-code-review Review all of biz/service/qrpay/ against docs/TRD/. No comparison branch. Focus on money movement, idempotency, and error recovery.
+/claude-like-codex-code-review Review all of src/example-service/ against docs/requirements/. No comparison branch. Focus on state transitions, idempotency, and error recovery.
 ```
 
 **Review an existing PR:**
@@ -129,16 +129,13 @@ The five tracks use independent contexts and run in batches within the environme
 This is an illustrative output format, not a measured result from this project:
 
 ```text
-[P1] Duplicate refund events enter the cumulative amount calculation
+[P1] Expired sessions remain valid
 
-Location: webhook.go:94
-Trigger: Two refund notifications with the same event_hash are processed in sequence.
-Impact: The second notification may count the refund again during the limit check,
-        incorrectly routing it to manual review.
-Evidence: The caller continues calculating the total after the event insert reports
-          that the event already exists.
-Counterevidence: A later unique index prevents duplicate credits, but does not prevent
-                 the earlier incorrect limit check.
+Location: src/session.py:42
+Trigger: A request presents a session whose expiration time is in the past.
+Impact: The request is accepted even though the session should be rejected.
+Evidence: The expiration check compares now < expires_at instead of now >= expires_at.
+Counterevidence: No later expiration check exists before access is granted.
 Score: 90
 Verification: Static call-chain inspection; no tests executed.
 ```
@@ -218,7 +215,7 @@ Claude Code 的 `code-review` 插件很好用。多个代理分别检查代码�
 一个命令，启动五路独立评审，追踪代码与历史，核对项目规范，最后把有证据的问题带回聊天。支持 PR、分支改动和指定模块全量审查，使用 Luna / Terra / Sol 分工。
 
 ```text
-/claude-like-codex-code-review 对照 docs/TRD/，审查整个支付服务，没有对比分支。
+/claude-like-codex-code-review 对照 docs/requirements/，审查整个示例服务，没有对比分支。
 ```
 
 [快速开始](#快速开始) · [评审流程](#评审流程) · [模型与用量](#模型与用量) · [常见问题](#常见问题)
@@ -270,7 +267,7 @@ cp -R agents "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/"
 **对照 TRD，全量检查指定服务：**
 
 ```text
-/claude-like-codex-code-review 对照 docs/TRD/，全量审查 biz/service/qrpay/，没有对比分支，重点看资金流、幂等和异常恢复。
+/claude-like-codex-code-review 对照 docs/requirements/，全量审查 src/example-service/，没有对比分支，重点看状态流转、幂等和异常恢复。
 ```
 
 **评审已有 PR：**
@@ -332,13 +329,13 @@ PR 数据通过环境中已有的 GitHub 连接器或 `gh` 读取。缺少权限
 以下为输出结构示例，不是本项目的实测结果：
 
 ```text
-[P1] 重复退款事件进入累计金额计算
+[P1] 已过期的会话仍然有效
 
-位置：webhook.go:94
-触发：同一 event_hash 的两个退款通知先后进入处理逻辑。
-影响：第二次处理可能将同一笔退款重复纳入额度判断，误转人工复核。
-证据：事件写入返回“已存在”后，调用方仍继续计算累计金额。
-复核：后续唯一索引可阻止重复入账，但不能阻止前面的额度误判。
+位置：src/session.py:42
+触发：请求携带的会话已经超过有效期。
+影响：本应被拒绝的请求仍然获得访问权限。
+证据：过期校验使用 now < expires_at，而非 now >= expires_at。
+复核：授予访问权限前，没有其他过期校验。
 评分：90
 验证：静态调用链核查，未运行测试。
 ```
