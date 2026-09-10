@@ -1,20 +1,20 @@
 # Code Review for Codex — Claude-inspired Multi-Agent Skill
 
-**A multi-agent code review skill for OpenAI Codex, with four independent reviewers and evidence-based verification.**
+**Configurable code review for OpenAI Codex, with optional fixes and GitHub PR inline comments.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Agent Skill](https://img.shields.io/badge/Codex-Agent_Skill-111827)](SKILL.md)
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Review uncommitted changes, branch diffs, pull requests, or entire modules in Codex. Two reviewers check project rules and two look for bugs; fresh agents then verify candidate findings and look for counterevidence. Results include code locations, trigger conditions, and practical impact.
+Review uncommitted changes, branch diffs, pull requests, or selected paths in Codex. Effort levels from `low` through `max` control review depth, reviewer count, and verification strength. Use `--fix` to apply local fixes and `--comment` to publish GitHub PR inline comments.
 
 Use it when you want a Claude Code-inspired review workflow in Codex, including checks against `AGENTS.md`, `CLAUDE.md`, or your technical requirements documents (TRDs). Reviews are read-only by default and return findings in chat.
 
 **Get started:** [Install the skill](#1-install), open the repository you want to review in Codex, and run:
 
 ```text
-/claude-like-codex-code-review Review all uncommitted changes in the current workspace.
+$claude-like-codex-code-review [low|medium|high|xhigh|max] [--fix] [--comment] [<pr#>|<branch>|<path>]
 ```
 
 The full multi-agent workflow requires a Codex environment with subagent orchestration and model selection. See [models and fallback behavior](#models-and-usage) for compatibility details.
@@ -27,9 +27,9 @@ A useful code review should answer three questions: **What breaks? What triggers
 
 This skill puts those questions into the workflow:
 
-- **Four independent reviewers.** Two Sol low agents check project rules; two Sol high agents look for bugs.
+- **Scale the review by effort.** `low` is a quick single-model pass, the default `high` profile uses four independent reviewers, and `xhigh`/`max` broaden discovery and verification.
 - **Find an issue, then look for counterevidence.** Fresh agents verify candidates against existing safeguards and trigger conditions.
-- **Report findings that meet the threshold.** Merge duplicate root causes and keep findings scoring at least 80, with locations, triggers, and impact.
+- **Report findings that meet the selected threshold.** Merge duplicate root causes, filter weak evidence by effort profile, and include locations, triggers, and impact.
 - **Review a diff or an entire module.** Full reviews include existing defects. Specify a TRD to check implementation against business requirements.
 - **Read-only by default, results in chat.** Editing code, saving reports, creating PRs, posting comments, and running tests require explicit additional requests.
 
@@ -45,6 +45,7 @@ cd claude-like-codex-code-review
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review"
 cp SKILL.md "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/SKILL.md"
 cp -R agents "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/"
+cp -R references "${CODEX_HOME:-$HOME/.codex}/skills/claude-like-codex-code-review/"
 ```
 
 These commands install the skill into your user-level skills directory and update an existing copy with the same name. Start a new Codex session and confirm that `claude-like-codex-code-review` appears in the skill list.
@@ -53,47 +54,74 @@ The full workflow requires a Codex environment with subagent orchestration and m
 
 ### 2. Run a review
 
-Open the repository you want to review in Codex and enter:
+Open the repository you want to review in Codex. Every argument is optional and the default effort is `high`:
+
+```text
+$claude-like-codex-code-review [low|medium|high|xhigh|max] [--fix] [--comment] [<pr#>|<branch>|<path>]
+```
 
 **Review uncommitted changes:**
 
 ```text
-/claude-like-codex-code-review Review all uncommitted changes in the current workspace.
+$claude-like-codex-code-review low
 ```
 
-**Review the current branch against main:**
+**Review the current branch against its default baseline:**
 
 ```text
-/claude-like-codex-code-review Review the current branch's changes against main.
+$claude-like-codex-code-review high
 ```
 
-**Review an entire service against its TRDs:**
+**Review a named branch:**
 
 ```text
-/claude-like-codex-code-review Review all of src/example-service/ against docs/requirements/. No comparison branch. Focus on state transitions, idempotency, and error recovery.
+$claude-like-codex-code-review high feature/login
 ```
+
+**Review a selected path deeply:**
+
+```text
+$claude-like-codex-code-review xhigh src/example-service/
+```
+
+Append ordinary-language review criteria when you need a TRD or special risk focus. Text that is not parsed as an effort, flag, or target remains review guidance.
 
 **Review an existing PR:**
 
 ```text
-/claude-like-codex-code-review Review PR #123. Return findings only in chat.
+$claude-like-codex-code-review high 123
+```
+
+**Review a PR and publish inline comments:**
+
+```text
+$claude-like-codex-code-review medium --comment 123
+```
+
+**Review and fix local code:**
+
+```text
+$claude-like-codex-code-review high --fix src/auth/
 ```
 
 PR data is read through an already available GitHub connector or `gh`. Missing permissions or history are reported as coverage limitations.
 
-### 3. Request additional actions when needed
+### 3. Arguments
 
-A standalone invocation reviews code and answers in chat. Specify any additional action explicitly:
+| Argument | Behavior |
+| --- | --- |
+| `low` | One quick pass; report at most 4 directly demonstrated findings. |
+| `medium` | Two independent discovery tracks with verification; report at most 6 findings. |
+| `high` | Default; four independent tracks with verification; report at most 10 findings. |
+| `xhigh` | Six discovery tracks and two-vote verification; report at most 15 findings. |
+| `max` | Eight discovery tracks, two-vote verification, and a gap sweep; report at most 20 findings. |
+| `--fix` | Apply retained findings locally and run reasonably scoped existing verification; do not commit or push. |
+| `--comment` | Publish retained findings as inline comments on the resolved GitHub PR. |
+| `PR / branch / path` | Accept one target such as `123`, `feature/login`, or `src/auth/`. |
 
-```text
-/claude-like-codex-code-review Review the current branch and save the report to review.md.
-```
+`--comment` requires exactly one open PR. When the target is not a PR, the skill resolves it from the target branch or current branch and stops for a PR number if the result is missing or ambiguous.
 
-```text
-/claude-like-codex-code-review Review the current changes and run relevant tests to verify candidate findings.
-```
-
-Saving a report does not also authorize creating a PR. Running tests does not also authorize editing code. Explicit authorization already given in the same task remains valid.
+Saving a report, creating a commit, pushing, or opening a PR still requires a separate explicit request. `--fix` and `--comment` authorize only their corresponding actions.
 
 ## How it works
 
@@ -102,28 +130,27 @@ Confirm scope and code version
               ↓
 Collect rules and summarize the module
               ↓
-Four independent review tracks
-Rules × 2 (Sol low) · Bugs × 2 (Sol high)
+Discovery tracks selected by low / medium / high / xhigh / max
               ↓
 Merge duplicate root causes
               ↓
 Verify each candidate and seek counterevidence
               ↓
-Keep findings scoring ≥ 80
+Keep findings meeting the selected threshold
               ↓
 Recheck the code version and return findings in chat
 ```
 
-| Review track | Key question |
+| Default `high` review track | Key question |
 | --- | --- |
 | Project rules × 2 | Each independently checks applicable `AGENTS.md`, `CLAUDE.md`, and user-specified TRDs. |
 | Bugs × 2 | Each independently checks functional errors and their concrete triggers, impact, and safeguards. |
 
 History, prior PR discussions, and code comments remain available as supporting evidence when relevant; they are not separate mandatory tracks.
 
-The four tracks use independent contexts and run in batches within the environment's concurrency limit. Discovery agents do not receive other reviewers' conclusions. Each merged candidate is scored once by a fresh Luna medium agent that reads the code and seeks counterevidence. There is no additional Sol recheck.
+The default `high` profile uses four independent contexts and runs them in batches within the environment's concurrency limit. `medium` uses two tracks, while `xhigh` and `max` add bug-discovery angles and two-vote verification. Discovery agents do not receive other reviewers' conclusions.
 
-**80 is a review threshold, not an “80% probability of being correct.”** Scores describe the strength of evidence; severity is assessed separately. If no finding meets the threshold, the review still reports its outcome and coverage limitations.
+Scores describe evidence strength rather than statistical probability; severity is assessed separately. `high`, `xhigh`, and `max` use an 80-point floor, `medium` uses 90, and `low` reports only directly demonstrated issues. The review still reports its outcome and limitations when no finding survives.
 
 ## What you get
 
@@ -145,12 +172,13 @@ Each finding includes a file link, trigger, practical impact, and key evidence. 
 
 ## Models and usage
 
-| Work | Default model | Reasoning effort |
+| Level | Discovery | Verification |
 | --- | --- | --- |
-| Scope, rule paths, summary, final baseline check | GPT-5.6 Luna | medium |
-| Two independent rule reviews | GPT-5.6 Sol | low |
-| Two independent bug reviews | GPT-5.6 Sol | high |
-| Independent candidate scoring | GPT-5.6 Luna | medium |
+| `low` | Coordinator-only pass | Keep directly demonstrated findings only |
+| `medium` | Sol: rules low ×1, bugs medium ×1 | Luna low ×1 |
+| `high` | Sol: rules low ×2, bugs high ×2 | Luna medium ×1 |
+| `xhigh` | Sol: rules medium ×2, bugs xhigh ×4 | Luna high ×2 |
+| `max` | Sol: rules high ×2, bugs max ×6, then a gap sweep | Luna max ×2 |
 
 The coordinator keeps your current session model. If you use Astra, Astra still orchestrates the review and summarizes the results; subagents use the models above. Switch the session model before invoking the skill if you want Sol to coordinate as well.
 
@@ -162,7 +190,7 @@ Model IDs and dispatch rules live in [SKILL.md](SKILL.md). If a specified model 
 
 ### Will it edit code, write Markdown, or create a PR automatically?
 
-Not by default. A standalone invocation authorizes reading and a chat response. Tests, builds, and dependency installation are also excluded by default. Additional actions require an explicit request, and the same boundary applies to subagents.
+Not by default. `--fix` explicitly authorizes local fixes and `--comment` explicitly authorizes PR comments; neither authorizes commits, pushes, or PR creation. Without those flags, the skill reads code and answers in chat only.
 
 ### Can earlier conversation affect a review?
 
